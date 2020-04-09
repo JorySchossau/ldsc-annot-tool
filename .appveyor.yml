@@ -125,7 +125,10 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
-   echo $PWD
+   pwd
+   ls /Users/appveyor
+   ls /Users/appveyor/projects
+   ls /Users/appveyor/projects/ldsc-annot-tool
    ## install nim dependencies
    iex "/Users/appveyor/appveyor-nim/nimble refresh -y --verbose"
    iex "/Users/appveyor/appveyor-nim/nimble install glob cligen -y --verbose"
