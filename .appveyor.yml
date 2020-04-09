@@ -2,9 +2,9 @@
 ## make sure to indent at least 3 spaces inside ps: command blocks
 
 image:
-  - Visual Studio 2019
+  #- Visual Studio 2019
   - macos
-  - Ubuntu1604
+  #- Ubuntu1604
 
 version: 1.{build}
 pull_requests:
