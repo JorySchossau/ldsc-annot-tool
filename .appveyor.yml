@@ -129,6 +129,7 @@ install:
    }
    
    ## install nim dependencies
+   echo "running $nimexe --version"
    iex "$nimexe --version"
    #nimble refresh -y
    #nimble install glob cligen -y
@@ -138,16 +139,14 @@ configuration: Release
 
 build_script:
 - ps: |
-   echo $PWD
-   ls .
    ## compile ldsc-annot-tool
    if ($IsLinux) {
-     iex "nim c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
-     iex "nim c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
    } else { # windows
-     iex "nim c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
    }
    ## strip executable
    if ($IsLinux -Or $IsMacOS) {
