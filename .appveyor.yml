@@ -31,6 +31,7 @@ notifications:
 install:
 - cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
 - sh: export PATH=$PATH:$PWD/nim/bin
+- sh: export HOME=$PWD
 - ps: |
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
