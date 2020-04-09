@@ -85,6 +85,9 @@ install:
      cd appveyor-nim
      expand-archive nim.zip (pwd)
      expand-archive upx.zip (pwd)
+     chmod +x nim
+     chmod +x nimble
+     chmod +x upx
      cd ..
    } else { #windows
      wget "https://nim-lang.org/download/nim-1.2.0_x64.zip" -outfile nim.zip
@@ -122,8 +125,8 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
-   iex "which nim"
-   iex "which nimble"
+   which nim
+   which nimble
    ## install nim dependencies
    iex "nimble refresh -y --verbose"
    iex "nimble install glob cligen -y --verbose"
