@@ -30,11 +30,12 @@ notifications:
 # called after cloning the repo, before build
 install:
 - cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
-- sh: export PATH=$PATH:$PWD/nim/bin
-- sh: export HOME=$PWD
+- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin
+- sh: export HOME=$APPVEYOR_BUILD_FOLDER
 - sh: echo $PATH
 - sh: echo $HOME
 - ps: |
+   cd $APPVEYOR_BUILD_FOLDER
    echo $PATH
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
@@ -62,11 +63,8 @@ install:
      $originaldir = (pwd)
      curl --output sdk.tar.xz -L "https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX10.13.sdk.tar.xz"
      tar xf sdk.tar.xz
-     ls .
      $env:MACOSX_DEPLOYMENT_TARGET="10.13"
      $env:SDKROOT=(join-path (pwd) "MacOSX10.13.sdk")
-     echo "sdk root"
-     echo $env:SDKROOT
    }
 
    ## get nim compiler
