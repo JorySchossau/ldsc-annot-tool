@@ -2,9 +2,9 @@
 ## make sure to indent at least 3 spaces inside ps: command blocks
 
 image:
-  #- Visual Studio 2019
+  - Visual Studio 2019
   - macos
-  #- Ubuntu1604
+  - Ubuntu1604
 
 version: 1.{build}
 pull_requests:
@@ -29,8 +29,8 @@ notifications:
 
 # called after cloning the repo, before build
 install:
-- cmd: set PATH=C:\projects\ldsc-annot-tool\nim\bin;%PATH%
-- sh: export PATH=$APPVEYOR_BUILD_FOLDER/nim/bin:$APPVEYOR_BUILD_FOLDER/appveyor-nim:$PATH
+- cmd: set PATH=C:\projects\ldsc-annot-tool\nim\bin;C:\projects\ldsc-annot-tool\muslbin\bin;%PATH%
+- sh: export PATH=$APPVEYOR_BUILD_FOLDER/nim/bin:$APPVEYOR_BUILD_FOLDER/appveyor-nim:$APPVEYOR_BUILD_FOLDER/muslbin/bin:$PATH
 - ps: |
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
@@ -62,24 +62,15 @@ install:
      $env:SDKROOT=(join-path (pwd) "MacOSX10.13.sdk")
    }
 
-   #if ($IsLinux -Or $IsMacOS) {
    if ($IsLinux) {
-     git clone --branch=devel https://github.com/nim-lang/nim
-     cd nim
-     # April 8, 2020 (v 1.3.1)
-     git checkout 7b582fd6a63e9fc62afbbcde2fc54192c199f04f
-     git clone https://github.com/nim-lang/csources
-     cd csources
-     iex ".\$csources_buildscript"
-     cd ..
-     iex "$nimexe c -d:release --cc:$nim_c_compiler koch"
-     ls .
-     .\koch boot -d:release -d:leanCompiler #*>$null
-     .\koch tools #*>$null
-     cd ..
+     git clone --branch=lin https://github.com/joryschossau/appveyor-nim
    } elseif ($IsMacOS) {
-     # get precompiled binaries
      git clone --branch=osx https://github.com/joryschossau/appveyor-nim
+   } elseif ($IsWindows) {
+     git clone --branch=win https://github.com/joryschossau/appveyor-nim
+   }
+   if ($IsLinux -Or $IsMacOS) {
+     # get precompiled binaries
      cd appveyor-nim
      expand-archive nim.zip (pwd)
      expand-archive upx.zip (pwd)
@@ -118,17 +109,16 @@ install:
      tar xf upx.tar.xz
      mv upx-3.96-amd64_linux upxbin
      $upxexe = join-path (pwd) "upxbin/upx"
+     cp upxbin/upx appveyor-nim/upx
    } elseif ($IsMacOS) {
      ## getting modern upx on mac is a pain
-     ## so we just ship the repo with one
-     #git clone --branch=support_files "https://github.com/joryschossau/ldsc-annot-tool" supporting_files
-     #expand-archive supporting_files/bin/osx_upx.zip (pwd)
-     #$upxexe = join-path (pwd) "supporting_files/bin/osx_upx"
+     ## so we just use the appveyor-nim one
    } else { # windows
      wget "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-win64.zip" -outfile upx.zip *>$null
      expand-archive upx.zip (pwd) *>$null
      mv upx-3.96-win64 upxbin
      $upxexe = join-path (pwd) "upxbin/upx.exe"
+     cp upxbin/upx.exe appveyor-nim/upx.exe
    }
    
    ## install nim dependencies
@@ -142,7 +132,7 @@ build_script:
 - ps: |
    ## compile ldsc-annot-tool
    if ($IsLinux) {
-     iex "nim c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
+     iex "nim c -d:release -d:danger --opt:speed --cc.exe:musl-gcc --passC:-flto --cc.linkerexe:musl-gcc -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
      iex "nim c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
