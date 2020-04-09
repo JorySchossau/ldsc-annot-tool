@@ -127,13 +127,11 @@ install:
      mv upx-3.96-win64 upxbin
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
-
+   
    ## install nim dependencies
-   echo (which nimble)
-   nimble "--version"
-   (nimble --version)
-   nimble refresh -y
-   nimble install glob cligen -y
+   iex "nim/bin/nim --version" #*>$null
+   #nimble refresh -y
+   #nimble install glob cligen -y
 
 # default build configuration
 configuration: Release
