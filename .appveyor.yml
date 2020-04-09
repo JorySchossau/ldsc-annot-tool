@@ -132,8 +132,7 @@ install:
    }
    
    ## install nim dependencies
-   echo "running $nimexe --version"
-   iex "$nimexe --version"
+   iex "nim --version"
    #nimble refresh -y
    #nimble install glob cligen -y
 
