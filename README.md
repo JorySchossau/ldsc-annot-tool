@@ -62,4 +62,4 @@ or
 ./annot -b baseline/1kg_eur. categories/*
 ```
 
-resulting in the new annotation files created in a directory `newAnnots` ready for ldsc regression.
+resulting in the new annotation files created in a directory `newAnnots` ready for ldsc regression, with each position annotated with a `0` or `1` for each category given, if the RSID is present (in this case, the `Exons` and `Introns` categories).
