@@ -29,14 +29,12 @@ notifications:
 
 # called after cloning the repo, before build
 install:
-- cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
-- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/appveyor-nim
+- cmd: set PATH=C:\projects\ldsc-annot-tool\nim\bin;%PATH%
+- sh: export PATH=$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/appveyor-nim:$PATH
 - sh: export HOME=$APPVEYOR_BUILD_FOLDER
 - sh: echo $PATH
 - sh: echo $HOME
 - ps: |
-   cd $APPVEYOR_BUILD_FOLDER
-   echo $PWD
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
      $csources_buildscript = "build.sh"
@@ -124,6 +122,8 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
+   iex "which nim"
+   iex "which nimble"
    ## install nim dependencies
    iex "nimble refresh -y --verbose"
    iex "nimble install glob cligen -y --verbose"
@@ -137,17 +137,14 @@ build_script:
    #Push-AppveyorArtifact nim/bin/nim
    #Push-AppveyorArtifact nim/bin/nimble
 
-   echo $PWD
-   cd ldsc-annot-tool
-   cd project
-   cd ldsc-annot-tool
+   cd $HOME
    echo $PWD
 
    ## compile ldsc-annot-tool
    if ($IsLinux) {
      iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
-     iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
+     iex "nim c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
    } else { # windows
      iex "$nimexe --version"
