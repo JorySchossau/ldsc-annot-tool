@@ -67,14 +67,6 @@ install:
      $env:SDKROOT=(join-path (pwd) "MacOSX10.13.sdk")
    }
 
-   ## get nim compiler
-   if ($IsMacOS) {
-     git clone --branch=osx https://github.com/joryschossau/appveyor-nim
-     cd appveyor-nim
-     expand-archive nim.zip (pwd)
-     expand-archive upx.zip (pwd)
-     cd ..
-   }
    #if ($IsLinux -Or $IsMacOS) {
    if ($IsLinux) {
      git clone --branch=devel https://github.com/nim-lang/nim
@@ -89,6 +81,12 @@ install:
      ls .
      .\koch boot -d:release -d:leanCompiler #*>$null
      .\koch tools #*>$null
+     cd ..
+   } elseif ($IsMacOS) {
+     git clone --branch=osx https://github.com/joryschossau/appveyor-nim
+     cd appveyor-nim
+     expand-archive nim.zip (pwd)
+     expand-archive upx.zip (pwd)
      cd ..
    } else { #windows
      wget "https://nim-lang.org/download/nim-1.2.0_x64.zip" -outfile nim.zip
@@ -136,8 +134,8 @@ configuration: Release
 build_script:
 - ps: |
    ## try to save nim!
-   Push-AppveyorArtifact nim/bin/nim
-   Push-AppveyorArtifact nim/bin/nimble
+   #Push-AppveyorArtifact nim/bin/nim
+   #Push-AppveyorArtifact nim/bin/nimble
 
    echo $PWD
    cd ldsc-annot-tool
