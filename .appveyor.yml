@@ -32,6 +32,8 @@ install:
 - cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
 - sh: export PATH=$PATH:$PWD/nim/bin
 - sh: export HOME=$PWD
+- sh: echo $PATH
+- sh: echo $HOME
 - ps: |
    echo $PATH
    # set up OS-specific differences
@@ -116,6 +118,10 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
+   ## try to save nim!
+   Push-AppveyorArtifact nim/bin/nim
+   Push-AppveyorArtifact nim/bin/nimble
+
    ## install nim dependencies
    iex "$nimbleexe refresh -y --verbose"
    iex "$nimbleexe install glob cligen -y --verbose"
@@ -131,8 +137,6 @@ build_script:
    } elseif ($IsMacOS) {
      iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
-     Push-AppveyorArtifact nim/bin/nim
-     Push-AppveyorArtifact nim/bin/nimble
    } else { # windows
      iex "$nimexe --version"
      iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
