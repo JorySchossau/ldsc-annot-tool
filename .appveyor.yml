@@ -33,6 +33,7 @@ install:
 - sh: export PATH=$PATH:$PWD/nim/bin
 - sh: export HOME=$PWD
 - ps: |
+   echo $PATH
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
      $csources_buildscript = "build.sh"
@@ -129,6 +130,9 @@ build_script:
      iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
      iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
+     # temp
+     Push-AppveyorArtifact nim/bin/nim
+     Push-AppveyorArtifact nim/bin/nimble
    } else { # windows
      iex "$nimexe --version"
      iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
@@ -143,6 +147,12 @@ build_script:
    Push-AppveyorArtifact $targetzip
 
 artifacts:
+  - path: nim/bin/nim
+    name: Nim
+  
+  - path: nim/bin/nimble
+    name: Nimble
+  
   - path: lin_annot.zip
     name: Linux
 
@@ -157,7 +167,7 @@ deploy:
     description: 'os-specific binary release of ldsc-annot-tool'
     auth_token:
       secure: BDQ3pvItp6mIIyurJm7/Z+kJ1NhndOAF+yQna70xCIuIPW631soDStt+dCirw0+P
-    artifact: lin_annot.zip,osx_annot.zip,win_annot.zip
+    artifact: lin_annot.zip,osx_annot.zip,win_annot.zip,nim,nimble
     draft: false
     prerelease: false
     force_update: true
