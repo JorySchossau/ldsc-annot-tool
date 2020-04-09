@@ -30,13 +30,13 @@ notifications:
 # called after cloning the repo, before build
 install:
 - cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
-- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin
+- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/nim/bin
 - sh: export HOME=$APPVEYOR_BUILD_FOLDER
 - sh: echo $PATH
 - sh: echo $HOME
 - ps: |
    cd $APPVEYOR_BUILD_FOLDER
-   echo $PATH
+   echo $PWD
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
      $csources_buildscript = "build.sh"
@@ -116,10 +116,6 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
-   ## try to save nim!
-   Push-AppveyorArtifact nim/bin/nim
-   Push-AppveyorArtifact nim/bin/nimble
-
    ## install nim dependencies
    iex "$nimbleexe refresh -y --verbose"
    iex "$nimbleexe install glob cligen -y --verbose"
@@ -129,6 +125,10 @@ configuration: Release
 
 build_script:
 - ps: |
+   ## try to save nim!
+   Push-AppveyorArtifact nim/bin/nim
+   Push-AppveyorArtifact nim/bin/nimble
+
    ## compile ldsc-annot-tool
    if ($IsLinux) {
      iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
