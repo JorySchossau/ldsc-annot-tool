@@ -5,8 +5,8 @@ CLI tool to convert GWAS rsid-categories to the annot files that ld-score-estima
 
 ### Downloads
 Latest releases listed here.
-* [Linux](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/lin_build) (glibc 2.23+)
-* [Mac](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/osx_build) (10.13+)
-* [Windows](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/win_build.exe)
+* [Linux](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/lin_annot.zip) (glibc 2.23+)
+* [Mac](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/osx_annot.zip) (10.13+)
+* [Windows](https://github.com/JorySchossau/ldsc-annot-tool/releases/latest/download/win_annot.zip)
 
 [Older Releases](https://github.com/JorySchossau/ldsc-annot-tool/releases)
