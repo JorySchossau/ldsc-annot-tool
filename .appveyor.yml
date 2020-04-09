@@ -129,7 +129,9 @@ install:
    }
 
    ## install nim dependencies
-   nimble --version
+   echo (which nimble)
+   nimble "--version"
+   (nimble --version)
    nimble refresh -y
    nimble install glob cligen -y
 
