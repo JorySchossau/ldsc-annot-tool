@@ -54,7 +54,8 @@ install:
    ## set up path variable
    $splitter = [System.IO.Path]::PathSeparator
    [System.Environment]::SetEnvironmentVariable("PATH", $Env:Path + $splitter + $nimbinpath, "User")
-   echo [System.Environment]::GetEnvironmentVariable("PATH", "User")
+   [System.Environment]::SetEnvironmentVariable("PATH", $Env:Path + $splitter + $nimbinpath, "Machine")
+   echo $env:PATH
 
    ## set up mac osx older SDK for compatibility
    if ($IsMacOS) {
