@@ -1,0 +1,159 @@
+
+## make sure to indent at least 3 spaces inside ps: command blocks
+
+image:
+  - Visual Studio 2019
+  - macos
+  - Ubuntu1604
+
+version: 1.{build}
+pull_requests:
+  do_not_increment_build_number: true
+branches:
+  only:
+  - master
+# only attempt to build and deploy when a commit message contains "please release"
+only_commits:
+  message: /please\s+release/
+#skip_tags: true
+#skip_non_tags: true
+clone_depth: 1
+notifications:
+- provider: Email
+  to:
+  - joryschossau@gmail.com
+  subject: (Appveyor) Build Status Message
+  on_build_success: true
+  on_build_failure: true
+  on_build_status_changed: false
+
+# called after cloning the repo, before build
+install:
+- ps: |
+   # set up OS-specific differences
+   if ($IsLinux -Or $IsMacOS) {
+     $csources_buildscript = "build.sh"
+     $env_path_sep = ":"
+     $nim_c_compiler = "gcc"
+   } else { # windows
+     $csources_buildscript = "build64.bat"
+     $env_path_sep = ";"
+     $nim_c_compiler = "vcc"
+   }
+   if ($IsLinux)     { $targetexe = "annot" }
+   elseif ($IsMacOS) { $targetexe = "annot" }
+   else              { $targetexe = "annot.exe" }
+   if ($IsLinux)     { $targetzip = "lin_annot.zip" }
+   elseif ($IsMacOS) { $targetzip = "osx_annot.zip" }
+   else              { $targetzip = "win_annot.zip" }
+   $nimexe = (join-path (pwd) "nim/bin/nim")
+   $nimbleexe = (join-path (pwd) "nim/bin/nimble")
+   $muslexe = (join-path (pwd) "muslbin/bin/musl-gcc")
+
+   ## set up mac osx older SDK for compatibility
+   if ($IsMacOS) {
+     $originaldir = (pwd)
+     curl --output sdk.tar.xz -L "https://github.com/phracker/MacOSX-SDKs/releases/download/10.15/MacOSX10.13.sdk.tar.xz"
+     tar xf sdk.tar.xz
+     ls .
+     $env:MACOSX_DEPLOYMENT_TARGET="10.13"
+     $env:SDKROOT=(join-path (pwd) "MacOSX10.13.sdk")
+     echo "sdk root"
+     echo $env:SDKROOT
+   }
+
+   ## get nim compiler
+   if ($IsLinux -Or $IsMacOS) {
+     git clone https://github.com/nim-lang/nim
+     cd nim
+     git clone https://github.com/nim-lang/csources
+     cd csources
+     iex ".\$csources_buildscript"
+     cd ..
+     iex "$nimexe c -d:release --cc:$nim_c_compiler koch"
+     ls .
+     .\koch boot -d:release -d:leanCompiler #*>$null
+     .\koch tools #*>$null
+     cd ..
+   } else { #windows
+     wget "https://nim-lang.org/download/nim-1.0.6_x64.zip" -outfile nim.zip
+     expand-archive nim.zip (pwd)
+     mv nim-1.0.6 nim
+   }
+   
+   ## build musl-gcc (linux-only)
+   if ($IsLinux) {
+     mkdir muslbin
+     git clone --depth=1 git://git.musl-libc.org/musl musl #*>$null
+     cd musl
+     .\configure --prefix=(join-path (pwd) "../muslbin") #*>$null
+     make --with-arch=x86_64 -j2 #*>$null
+     make install #*>$null
+     cd ..
+   }
+   
+   ## get upx
+   if ($IsLinux) {
+     curl --output upx.tar.xz -L "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-amd64_linux.tar.xz"
+     tar xf upx.tar.xz
+     mv upx-3.96-amd64_linux upxbin
+     $upxexe = join-path (pwd) "upxbin/upx"
+   } elseif ($IsMacOS) {
+     ## getting modern upx on mac is a pain
+     ## so we just ship the repo with one
+     git clone --branch=support_files "https://github.com/joryschossau/ldsc-annot-tool" supporting_files
+     expand-archive supporting_files/bin/osx_upx.zip (pwd)
+     $upxexe = join-path (pwd) "supporting_files/bin/osx_upx"
+   } else { # windows
+     wget "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-win64.zip" -outfile upx.zip *>$null
+     expand-archive upx.zip (pwd) *>$null
+     mv upx-3.96-win64 upxbin
+     $upxexe = join-path (pwd) "upxbin/upx.exe"
+   }
+
+   ## install nim dependencies
+   iex "$nimbleexe install glob cligen -y"
+
+# default build configuration
+configuration: Release
+
+build_script:
+- ps: |
+   ## compile ldsc-annot-tool
+   if ($IsLinux) {
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe build" #*>$null
+   } elseif ($IsMacOS) {
+     iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' build" #*>$null
+   } else { # windows
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe build" *>$null
+   }
+   ## strip executable
+   if ($IsLinux -Or $IsMacOS) {
+     strip $targetexe
+   }
+   ## compress executable
+   iex "$upxexe --best $targetexe" *>$null
+   Compress-Archive -Path $targetexe -DestinationPath $targetzip
+   Push-AppveyorArtifact $targetzip
+
+artifacts:
+  - path: lin_annot.zip
+    name: Linux
+
+  - path: osx_annot.zip
+    name: Mac
+
+  - path: win_annot.zip
+    name: Windows(x64)
+
+deploy:
+  - provider: GitHub
+    description: 'os-specific binary release of ldsc-annot-tool'
+    auth_token:
+      secure: BDQ3pvItp6mIIyurJm7/Z+kJ1NhndOAF+yQna70xCIuIPW631soDStt+dCirw0+P
+    artifact: lin_build.zip,osx_build.zip,win_build.zip
+    draft: false
+    prerelease: false
+    force_update: true
+    on:
+      branch: master
