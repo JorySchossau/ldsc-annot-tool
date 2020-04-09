@@ -35,6 +35,8 @@ install:
 - sh: echo $PATH
 - sh: echo $HOME
 - ps: |
+   echo "the pwd is"
+   echo $PWD
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
      $csources_buildscript = "build.sh"
@@ -89,6 +91,8 @@ install:
      chmod +x nimble
      chmod +x upx
      cd ..
+     echo "installed to"
+     echo $PWD/appveyor-nim
    } else { #windows
      wget "https://nim-lang.org/download/nim-1.2.0_x64.zip" -outfile nim.zip
      expand-archive nim.zip (pwd)
