@@ -83,15 +83,12 @@ install:
      cd appveyor-nim
      expand-archive nim.zip (pwd)
      expand-archive upx.zip (pwd)
-     chmod +x nim
-     chmod +x nimble
-     chmod +x upx
      cd ..
      # get nim source
      git clone --branch=devel https://github.com/nim-lang/nim
      cd nim
      # April 8, 2020 (v 1.3.1)
-     git checkout 7b582fd6a63e9fc62afbbcde2fc54192c199f04f
+     git checkout cc3f5d21b249fe8f96f61369e53e794bf34e65a5
      mv ../appveyor-nim/nim bin/nim
      mv ../appveyor-nim/nimble bin/nimble
      cd ..
@@ -131,50 +128,34 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
-   echo $env:PATH
-   echo $PWD
    ## install nim dependencies
-   iex "nimble refresh -y --verbose"
-   iex "nimble install glob cligen -y --verbose"
+   iex "nimble refresh -y"
+   iex "nimble install glob cligen -y"
 
 # default build configuration
 configuration: Release
 
 build_script:
 - ps: |
-   ## try to save nim!
-   #Push-AppveyorArtifact nim/bin/nim
-   #Push-AppveyorArtifact nim/bin/nimble
-
-   echo $PWD
-   echo (ls .)
-
    ## compile ldsc-annot-tool
    if ($IsLinux) {
-     iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
+     iex "nim c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
      iex "nim c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
    } else { # windows
-     iex "$nimexe --version"
-     iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
+     iex "nim c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
    }
    ## strip executable
    if ($IsLinux -Or $IsMacOS) {
      strip $targetexe
    }
    ## compress executable
-   iex "$upxexe --best $targetexe" *>$null
+   iex "upx --best $targetexe" *>$null
    Compress-Archive -Path $targetexe -DestinationPath $targetzip
    Push-AppveyorArtifact $targetzip
 
 artifacts:
-  - path: nim/bin/nim
-    name: Nim
-  
-  - path: nim/bin/nimble
-    name: Nimble
-  
   - path: lin_annot.zip
     name: Linux
 
@@ -189,7 +170,7 @@ deploy:
     description: 'os-specific binary release of ldsc-annot-tool'
     auth_token:
       secure: BDQ3pvItp6mIIyurJm7/Z+kJ1NhndOAF+yQna70xCIuIPW631soDStt+dCirw0+P
-    artifact: lin_annot.zip,osx_annot.zip,win_annot.zip,nim,nimble
+    artifact: lin_annot.zip,osx_annot.zip,win_annot.zip
     draft: false
     prerelease: false
     force_update: true
