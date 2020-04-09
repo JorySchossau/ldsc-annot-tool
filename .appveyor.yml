@@ -129,6 +129,7 @@ install:
    }
 
    ## install nim dependencies
+   iex "nimble --version"
    iex "nimble refresh -y"
    iex "nimble install glob cligen -y"
 
@@ -137,6 +138,8 @@ configuration: Release
 
 build_script:
 - ps: |
+   echo $PWD
+   ls .
    ## compile ldsc-annot-tool
    if ($IsLinux) {
      iex "nim c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
