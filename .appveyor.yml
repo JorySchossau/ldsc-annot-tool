@@ -46,9 +46,15 @@ install:
    if ($IsLinux)     { $targetzip = "lin_annot.zip" }
    elseif ($IsMacOS) { $targetzip = "osx_annot.zip" }
    else              { $targetzip = "win_annot.zip" }
+   $nimbinpath = (join-path (pwd) "nim/bin")
    $nimexe = (join-path (pwd) "nim/bin/nim")
    $nimbleexe = (join-path (pwd) "nim/bin/nimble")
    $muslexe = (join-path (pwd) "muslbin/bin/musl-gcc")
+   
+   ## set up path variable
+   $splitter = [System.IO.Path]::PathSeparator
+   [System.Environment]::SetEnvironmentVariable("PATH", $Env:Path + $splitter + $nimbinpath, "User")
+   echo [System.Environment]::GetEnvironmentVariable("PATH", "User")
 
    ## set up mac osx older SDK for compatibility
    if ($IsMacOS) {
