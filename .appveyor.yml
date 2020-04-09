@@ -146,8 +146,8 @@ build_script:
    #Push-AppveyorArtifact nim/bin/nim
    #Push-AppveyorArtifact nim/bin/nimble
 
-   cd $HOME
    echo $PWD
+   echo (ls .)
 
    ## compile ldsc-annot-tool
    if ($IsLinux) {
