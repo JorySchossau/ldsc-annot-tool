@@ -67,7 +67,7 @@ install:
 
    ## get nim compiler
    if ($IsLinux -Or $IsMacOS) {
-     git clone https://github.com/nim-lang/nim
+     git clone --branch=devel https://github.com/nim-lang/nim
      cd nim
      git clone https://github.com/nim-lang/csources
      cd csources
@@ -79,9 +79,9 @@ install:
      .\koch tools #*>$null
      cd ..
    } else { #windows
-     wget "https://nim-lang.org/download/nim-1.0.6_x64.zip" -outfile nim.zip
+     wget "https://nim-lang.org/download/nim-1.2.0_x64.zip" -outfile nim.zip
      expand-archive nim.zip (pwd)
-     mv nim-1.0.6 nim
+     mv nim-1.2.0 nim
    }
    
    ## build musl-gcc (linux-only)
@@ -115,7 +115,8 @@ install:
    }
 
    ## install nim dependencies
-   iex "$nimbleexe install glob cligen -y"
+   iex "$nimbleexe refresh -y --verbose"
+   iex "$nimbleexe install glob cligen -y --verbose"
 
 # default build configuration
 configuration: Release
@@ -128,6 +129,7 @@ build_script:
    } elseif ($IsMacOS) {
      iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
    } else { # windows
+     iex "$nimexe --version"
      iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
    }
    ## strip executable
