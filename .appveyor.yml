@@ -125,9 +125,9 @@ install:
      $upxexe = join-path (pwd) "upxbin/upx.exe"
    }
 
-   echo (pwd)
-   echo (ls /Users/appveyor/appveyor-nim)
    echo $env:PATH
+   pwd
+   echo (ls /Users/appveyor)
    ## install nim dependencies
    iex "/Users/appveyor/appveyor-nim/nimble refresh -y --verbose"
    iex "/Users/appveyor/appveyor-nim/nimble install glob cligen -y --verbose"
