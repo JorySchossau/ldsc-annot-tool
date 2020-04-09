@@ -30,7 +30,7 @@ notifications:
 # called after cloning the repo, before build
 install:
 - cmd: set PATH=%PATH%;C:\projects\ldsc-annot-tool\nim\bin
-- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/nim/bin
+- sh: export PATH=$PATH:$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/appveyor-nim
 - sh: export HOME=$APPVEYOR_BUILD_FOLDER
 - sh: echo $PATH
 - sh: echo $HOME
@@ -68,9 +68,19 @@ install:
    }
 
    ## get nim compiler
-   if ($IsLinux -Or $IsMacOS) {
+   if ($IsMacOS) {
+     git clone --branch=osx https://github.com/joryschossau/appveyor-nim
+     cd appveyor-nim
+     expand-archive nim.zip (pwd)
+     expand-archive upx.zip (pwd)
+     cd ..
+   }
+   #if ($IsLinux -Or $IsMacOS) {
+   if ($IsLinux) {
      git clone --branch=devel https://github.com/nim-lang/nim
      cd nim
+     # April 8, 2020 (v 1.3.1)
+     git checkout 7b582fd6a63e9fc62afbbcde2fc54192c199f04f
      git clone https://github.com/nim-lang/csources
      cd csources
      iex ".\$csources_buildscript"
@@ -106,9 +116,9 @@ install:
    } elseif ($IsMacOS) {
      ## getting modern upx on mac is a pain
      ## so we just ship the repo with one
-     git clone --branch=support_files "https://github.com/joryschossau/ldsc-annot-tool" supporting_files
-     expand-archive supporting_files/bin/osx_upx.zip (pwd)
-     $upxexe = join-path (pwd) "supporting_files/bin/osx_upx"
+     #git clone --branch=support_files "https://github.com/joryschossau/ldsc-annot-tool" supporting_files
+     #expand-archive supporting_files/bin/osx_upx.zip (pwd)
+     #$upxexe = join-path (pwd) "supporting_files/bin/osx_upx"
    } else { # windows
      wget "https://github.com/upx/upx/releases/download/v3.96/upx-3.96-win64.zip" -outfile upx.zip *>$null
      expand-archive upx.zip (pwd) *>$null
@@ -117,8 +127,8 @@ install:
    }
 
    ## install nim dependencies
-   iex "$nimbleexe refresh -y --verbose"
-   iex "$nimbleexe install glob cligen -y --verbose"
+   iex "nimble refresh -y --verbose"
+   iex "nimble install glob cligen -y --verbose"
 
 # default build configuration
 configuration: Release
@@ -128,6 +138,12 @@ build_script:
    ## try to save nim!
    Push-AppveyorArtifact nim/bin/nim
    Push-AppveyorArtifact nim/bin/nimble
+
+   echo $PWD
+   cd ldsc-annot-tool
+   cd project
+   cd ldsc-annot-tool
+   echo $PWD
 
    ## compile ldsc-annot-tool
    if ($IsLinux) {
