@@ -98,7 +98,7 @@ install:
      git clone --depth=1 git://git.musl-libc.org/musl musl #*>$null
      cd musl
      .\configure --prefix=(join-path (pwd) "../muslbin") #*>$null
-     make --with-arch=x86_64 -j2 #*>$null
+     make GCC_CONFIG="--with-arch=x86_64" -j2 #*>$null
      make install #*>$null
      cd ..
    }
@@ -132,7 +132,7 @@ build_script:
 - ps: |
    ## compile ldsc-annot-tool
    if ($IsLinux) {
-     iex "nim c -d:release -d:danger --opt:speed --cc.exe:musl-gcc --passC:-flto --cc.linkerexe:musl-gcc -o:$targetexe annot" #*>$null
+     iex "nim c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
      iex "nim c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
      # temp
