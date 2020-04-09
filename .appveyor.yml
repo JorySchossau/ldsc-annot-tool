@@ -83,6 +83,9 @@ install:
      cd appveyor-nim
      expand-archive nim.zip (pwd)
      expand-archive upx.zip (pwd)
+     chmod +x nim
+     chmod +x nimble
+     chmod +x upx
      cd ..
      # get nim source
      git clone --branch=devel https://github.com/nim-lang/nim
