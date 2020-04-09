@@ -30,7 +30,7 @@ notifications:
 # called after cloning the repo, before build
 install:
 - cmd: set PATH=C:\projects\ldsc-annot-tool\nim\bin;%PATH%
-- sh: export PATH=$APPVEYOR_BUILD_FOLDER/nim/bin:/Users/appveyor/appveyor-nim:$PATH
+- sh: export PATH=$APPVEYOR_BUILD_FOLDER/nim/bin:$APPVEYOR_BUILD_FOLDER/appveyor-nim:$PATH
 - ps: |
    # set up OS-specific differences
    if ($IsLinux -Or $IsMacOS) {
@@ -78,8 +78,6 @@ install:
      .\koch tools #*>$null
      cd ..
    } elseif ($IsMacOS) {
-     $CURDIR=$PWD
-     cd ..
      git clone --branch=osx https://github.com/joryschossau/appveyor-nim
      cd appveyor-nim
      expand-archive nim.zip (pwd)
@@ -88,7 +86,6 @@ install:
      chmod +x nimble
      chmod +x upx
      cd ..
-     cd $CURDIR
    } else { #windows
      wget "https://nim-lang.org/download/nim-1.2.0_x64.zip" -outfile nim.zip
      expand-archive nim.zip (pwd)
@@ -127,10 +124,9 @@ install:
 
    echo $env:PATH
    echo $PWD
-   echo (ls /Users/appveyor/appveyor-nim)
    ## install nim dependencies
-   iex "/Users/appveyor/appveyor-nim/nimble refresh -y --verbose"
-   iex "/Users/appveyor/appveyor-nim/nimble install glob cligen -y --verbose"
+   iex "nimble refresh -y --verbose"
+   iex "nimble install glob cligen -y --verbose"
 
 # default build configuration
 configuration: Release
