@@ -126,8 +126,8 @@ install:
    }
 
    echo $env:PATH
-   pwd
-   echo (ls /Users/appveyor)
+   echo $PWD
+   echo (ls /Users/appveyor/projects)
    ## install nim dependencies
    iex "/Users/appveyor/appveyor-nim/nimble refresh -y --verbose"
    iex "/Users/appveyor/appveyor-nim/nimble install glob cligen -y --verbose"
