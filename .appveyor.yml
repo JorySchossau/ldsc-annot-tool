@@ -94,9 +94,10 @@ install:
    
    ## build musl-gcc (linux-only)
    if ($IsLinux) {
+     mkdir muslbin
      git clone --depth=1 git://git.musl-libc.org/musl musl #*>$null
      cd musl
-     .\configure --prefix=$APPVEYOR_BUILD_FOLDER/muslbin #*>$null
+     .\configure --prefix=$PWD/../muslbin #*>$null
      make --with-arch=x86_64 -j2 #*>$null
      make install #*>$null
      cd ..
