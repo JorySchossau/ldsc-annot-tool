@@ -126,10 +126,8 @@ install:
    }
 
    echo (pwd)
-   echo (ls /Users/appveyor)
-   echo (ls /Users/appveyor/projects)
-   echo (ls /Users/appveyor/projects/ldsc-annot-tool)
-   echo $env.PATH
+   echo (ls /Users/appveyor/appveyor-nim)
+   echo $env:PATH
    ## install nim dependencies
    iex "/Users/appveyor/appveyor-nim/nimble refresh -y --verbose"
    iex "/Users/appveyor/appveyor-nim/nimble install glob cligen -y --verbose"
