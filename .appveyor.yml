@@ -13,9 +13,9 @@ branches:
   only:
   - master
 # only attempt to build and deploy when a commit message contains "please release"
-#only_commits:
-#  message: /please\s+release/
-#skip_tags: true
+only_commits:
+  message: /please\s+release/
+skip_tags: true
 #skip_non_tags: true
 clone_depth: 1
 notifications:
@@ -53,12 +53,6 @@ install:
    $nimbleexe = (join-path (pwd) "nim/bin/nimble")
    $muslexe = (join-path (pwd) "muslbin/bin/musl-gcc")
    
-   ## set up path variable
-   #$splitter = [System.IO.Path]::PathSeparator
-   #[Environment]::SetEnvironmentVariable("PATH", $env:PATH + $splitter + $nimbinpath, "User")
-   #[Environment]::SetEnvironmentVariable("PATH", $env:PATH + $splitter + $nimbinpath, "Machine")
-   echo $env:PATH
-
    ## set up mac osx older SDK for compatibility
    if ($IsMacOS) {
      $originaldir = (pwd)
@@ -130,11 +124,11 @@ build_script:
 - ps: |
    ## compile ldsc-annot-tool
    if ($IsLinux) {
-     iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe build" #*>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc.exe:$muslexe --passC:-flto --cc.linkerexe:$muslexe -o:$targetexe annot" #*>$null
    } elseif ($IsMacOS) {
-     iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' build" #*>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed -o:$targetexe --passC:-flto --passL:-mmacosx-version-min=10.13 --passL:'-isysroot $env:SDKROOT' annot" #*>$null
    } else { # windows
-     iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe build" *>$null
+     iex "$nimexe c -d:release -d:danger --opt:speed --cc:vcc -o:$targetexe annot" *>$null
    }
    ## strip executable
    if ($IsLinux -Or $IsMacOS) {
@@ -160,7 +154,7 @@ deploy:
     description: 'os-specific binary release of ldsc-annot-tool'
     auth_token:
       secure: BDQ3pvItp6mIIyurJm7/Z+kJ1NhndOAF+yQna70xCIuIPW631soDStt+dCirw0+P
-    artifact: lin_build.zip,osx_build.zip,win_build.zip
+    artifact: lin_annot.zip,osx_annot.zip,win_annot.zip
     draft: false
     prerelease: false
     force_update: true
