@@ -1,8 +1,8 @@
 import strscans
 import glob # dependency
-import cligen # dependency
 import streams
 import seqUtils
+import strUtils
 import strformat
 import tables
 import intsets # 1 set represents 1 category file of rsids
@@ -61,8 +61,8 @@ proc to_categories(files:openArray[string]): Categories =
   for file in files:
     if verbosity >= 1:
       echo &"reading {file}"
-    result[file] = initIntSet()
-    var category {.byaddr.} = result[file]
+    result[file.splitFile.name] = initIntSet()
+    var category {.byaddr.} = result[file.splitFile.name]
     var rsid:int
     check_category_format file
     for line in file.lines:
@@ -72,7 +72,7 @@ proc to_categories(files:openArray[string]): Categories =
 # builds off of data in bim file
 # adding extra columns, 1 for each category
 # putting a 1 or 0 if rsid is in category
-proc write_annot(bimfile:string, categories:Categories) =
+proc write_annot(bimfile:string, categories:Categories, outdir:string) =
   check_bim_format bimfile
   var
     chr:int
@@ -81,12 +81,12 @@ proc write_annot(bimfile:string, categories:Categories) =
     bp:int
 
   # prepare output file
-  create_dir "newAnnots"
+  create_dir outdir
   let outfilename = bimfile.split_file.name & ".annot"
-  var outfile = newFileStream("newAnnots" / outfilename, fmWrite)
+  var outfile = newFileStream(outdir / outfilename, fmWrite)
 
   if verbosity >= 1:
-    echo &"reading {bimfile}, creating " & "newAnnots" / outfilename
+    echo &"reading {bimfile}, creating " & outdir / outfilename
 
   # write header
   outfile.write("CHR\tBP\tSNP\tCM\tbase")
@@ -116,32 +116,119 @@ proc generate_example_files() =
   baseline_filename.write_file baseline_contents
   category_filename.write_file category_contents
 
-proc main(bimprefix: string = "REQUIRED", annotfiles: seq[string], examples:bool = false) =
+# helper for multi-in "if ["a","b","c"] in alist"
+proc contains[T](a:openArray[T], b:openArray[T]):bool =
+  for each_item in a:
+    if each_item in b: return true
+  return false
 
-  # generate examples and quit, if requested
-  if examples:
+proc showHelp =
+  echo """
+
+Converts a collection of rsid categories into formatted .annot files for ldsc regression.
+
+Usage
+  annot -b|--bimprefix PATH -s|--snpfiles FILES... [-o|--output OUTDIR]
+
+Example
+  ./annot -b test_baseline/subset. -s test_annots/FetalDHS_Trynka test_annots/H3K27ac_PGC2
+
+  -b --bimprefix PATH    nonunique prefix path to all bim files
+  -s --snpfiles FILES... all snp category files
+  -o --output OUTDIR     output directory (default 'output')
+  -h --help              this help message
+
+Note that the snp file names will be used as category headers (names) in the resulting file. So if the files have an extension (.txt) then that will show up in the resulting file and analysis output. We recommend naming files to not have an extension so the output is easier to read.
+
+"""
+
+proc errorCheckCommandLineArgs(args:seq[string]) =
+  # show help if requested
+  if ["-h","--help"] in args or args.len == 0:
+    showHelp()
+    quit(0)
+
+  # generate examples if requested
+  if "--examples" in args:
     generate_example_files()
-    echo &"saved example files: {baseline_filename}, {category_filename}"
+    echo &"created example files: {baseline_filename}, {category_filename}"
     echo ""
     echo "run using the example files:"
     echo &"  annot -b example. {category_filename}"
     echo ""
     quit(0)
 
-  if bimprefix == "REQUIRED":
+  if ["-b","--bimprefix"] notin args:
     echo "Error: please specify a bim prefix with -b or --bimprefix"
     echo "       ex: bims/baseline.1.bim through bims/baseline.22.bim use:"
     echo "       annot -b bims/baseline."
     quit(1)
 
-  # otherwise, run normal program flow
+  if ["-s","--snpfiles"] notin args:
+    echo "Error: please specify snp category files with -s or --snpfiles"
+    echo "       ex: snps/FetalDHS_Trynka and snps/H3K27ac_PGC2 use:"
+    echo "       annot -s snps/*"
+    echo "       or"
+    echo "       annot -s snps/FetalDHS_Trynka snps/H3K27ac_PGC2"
+    quit(1)
+
+  if args.len < 4:
+    echo "Error: both --bimprefix (-b) and --snpfiles (-s) need arguments."
+    echo ""
+    showHelp()
+    quit(1)
+
+proc main() =
+  var
+    outdir:string = "output" # default output directory, user can override
+    bimprefix:string
+    snpfiles:seq[string]
+    makeExamples:bool
+    args = commandLineParams()
+    loc = -1
+
+  # remove possible optional output option and its argument
+  if ["-o","--output"] in args:
+    loc = -1
+    loc = max(loc, args.find "-o")
+    loc = max(loc, args.find "--output")
+    if loc != -1:
+      if args[loc+1].startsWith("-"):
+        echo "Error: --output (-o) needs an argument."
+        echo ""
+        showHelp()
+        quit(1)
+      outdir = args[loc+1]
+      # delete "--output" and following argument
+      args.delete loc
+      args.delete loc
+  
+  errorCheckCommandLineArgs args
+
+  # find, load, and remove bimprefix and its argument
+  loc = -1
+  loc = max(loc, args.find "-b")
+  loc = max(loc, args.find "--bimprefix")
+  bimprefix = args[loc+1]
+
+  args.delete loc
+  args.delete loc
+
+  # find and load snpfiles arguments
+  loc = -1
+  loc = max(loc, args.find "-s")
+  loc = max(loc, args.find "--snpfiles")
+  snpfiles = args[loc+1 .. ^1]
+
+  # run normal program flow
   let
-    allannotfiles = annotfiles.all_wildcards_expanded.sorted
+    allsnpfiles = snpfiles.all_wildcards_expanded.sorted
     allbimfiles   = (bimprefix & "*.bim").all_wildcards_expanded.sorted
-    categories = allannotfiles.to_categories
+    categories = allsnpfiles.to_categories
+
   for bimfile in allbimfiles:
-    write_annot(bimfile, categories)
+    write_annot(bimfile, categories, outdir)
 
 when isMainModule:  # Preserve ability to `import api`/call from Nim
-  dispatch(main, help={"examples":"create and show example usage"})
+  main()
 
