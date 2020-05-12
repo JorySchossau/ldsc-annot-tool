@@ -124,6 +124,7 @@ install:
    ## install nim dependencies
    nimble refresh -y
    nimble install glob@#head cligen -y
+   nimble install simple_parseopt
 
 # default build configuration
 configuration: Release
