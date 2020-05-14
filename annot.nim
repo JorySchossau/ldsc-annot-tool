@@ -16,7 +16,7 @@ import math # nextPowerOfTwo
 
 # fix for slow hashing of higher-order bits (until next release of nim, or use BTrees)
 import hashes
-proc hash(x: int): Hash = Hash(x * 0x9549249549249549)
+proc hash(x: int): Hash = Hash(x * 0x49249549)
 
 # could make this modifiable by CLI
 var verbosity:int = 1
@@ -24,8 +24,8 @@ var verbosity:int = 1
 # 1 intset is 1 category file listing rsids
 # the string is the filename sans extension
 type
-  Categories = OrderedTable[string,IntSet]
-  CategoriesWithAnnotations = Table[string,Table[int,float]]
+  Category = IntSet
+  CategoryWithAnnotations = Table[int,string]
 
 proc all_wildcards_expanded(paths:seq[string]|string): seq[string] =
   when paths is string:
@@ -82,95 +82,117 @@ proc has_annotations(file:string):bool =
       result = true
     break
 
-# convert all files passed to
-# table of intsets of rsids, grouped by filename
-proc to_categories(files:openArray[string]): (Categories,CategoriesWithAnnotations) =
-  var categories:Categories
-  var categoriesWithAnnots:CategoriesWithAnnotations
-  for file in files:
-    var fileLen = 0
-    for line in lines(memfiles.open(file)): inc fileLen
-    if verbosity >= 1:
-      echo &"reading {file} ({fileLen} lines)"
-    # init the category
-    categories[file.splitPath.tail] = initIntSet()
-    var category {.byaddr.} = categories[file.splitPath.tail]
-    var rsid:int
-    var annotation:float
-    var annotation2:string
-    check_category_format file
-    if file.has_annotations:
-      # init the annotation table
-      categoriesWithAnnots[file.splitPath.tail] = initTable[int,float](nextPowerOfTwo fileLen)
-      var annottable {.byaddr.} = categoriesWithAnnots[file.splitPath.tail]
-      # scrape both rsid and annotation
-      for line in file.lines:
-        if line.scanf("rs$i$s$f$.",rsid,annotation):
-          category.incl rsid
-          annottable[rsid] = annotation
-    else:
-      # scrape only the rsids
-      for line in file.lines:
-        if line.scanf("rs$i$.",rsid):
-          category.incl rsid
-  result = (categories,categoriesWithAnnots)
+# read annotation category file and return representative data structures
+# Category:intSet, CategoryWithAnnotations:Table[int,float]
+proc to_category(file:string): (Category,CategoryWithAnnotations) =
+  var category:Category
+  var categoryWithAnnots:CategoryWithAnnotations
+  var fileLen = 0
+  for line in lines(memfiles.open(file)): inc fileLen
+  if verbosity >= 1:
+    echo &"adding {file} ({fileLen} lines)"
+  # init the category
+  var rsid:int
+  var annotation:string
+  check_category_format file
+  if file.has_annotations:
+    # init the annotation table
+    categoryWithAnnots = initTable[int,string](nextPowerOfTwo fileLen)
+    # scrape both rsid and annotation
+    for line in file.lines:
+      if line.scanf("rs$i$s$*$.",rsid,annotation):
+        category.incl rsid
+        categoryWithAnnots[rsid] = annotation
+  else:
+    # scrape only the rsids
+    for line in file.lines:
+      if line.scanf("rs$i$.",rsid):
+        category.incl rsid
+  result = (category,categoryWithAnnots)
 
 # the main work proc
 # builds off of data in bim file
 # adding extra columns, 1 for each category
 # putting a 1 or 0 if rsid is in category
-proc write_annot(bimfile:string, cats:Categories, catswAnnots:CategoriesWithAnnotations, outdir:string) =
-  check_bim_format bimfile
-  var
-    chr:int
-    rsid:int
-    cm:float
-    bp:int
+proc write_annot(allbimfiles:seq[string], allsnpfiles:seq[string], outdir:string) =
 
-  # prepare output file
-  create_dir outdir
-  let outfilename = bimfile.split_file.name & ".annot"
-  var outfile = newFileStream(outdir / outfilename, fmWrite)
+  for bimfile in allbimfiles:
+    # prepare output file
+    create_dir outdir
+    let outfilename = bimfile.split_file.name & ".annot"
+    let destinationPath = outdir / outfilename
 
-  if verbosity >= 1:
-    echo &"reading {bimfile}, creating " & outdir / outfilename
+    check_bim_format bimfile
+    var
+      chr:int
+      rsid:int
+      cm:string
+      bp:int
+      lineN:int
 
-  # write header
-  outfile.write("CHR\tBP\tSNP\tCM\tbase")
-  for name,category in cats.pairs:
-    outfile.write("\t" & name)
-  outfile.write("\n")
+    if verbosity >= 1:
+      echo &"reading {bimfile}"
 
-  # write rest of contents
-  var outstring:string
-  var n = 0
-  for line in lines(memfiles.open(bimfile)):
-    if line.scanf("$i\trs$i\t$f\t$i",chr,rsid,cm,bp):
-      if n mod 10 == 0:
-        stdout.write '.'
-        stdout.flushFile
-      inc n
-      # write first part of row
-      #outfile.write &"{chr}\t{bp}\t{rsid}\t{cm}\t1"
-      outstring = &"{chr}\t{bp}\t{rsid}\t{cm}\t1"
-      # write rest of row (all cats)
-      for name,category in cats:
-        # if this category has no annotations
-        if not catswAnnots.hasKey name:
-          if category.contains rsid: outstring.add "\t1"
-          else:                      outstring.add "\t0"
-          #if category.contains rsid: outfile.write "\t1"
-          #else:                      outfile.write "\t0"
-        # if this category has annotations
-        else:
-          let catwannots = catswAnnots[name]
-          if category.contains rsid: outstring.add "\t" & $catwannots[rsid]
-          else:                      outstring.add "\t0"
-          #if category.contains rsid: outfile.write "\t" & $catwannots[rsid]
-          #else:                      outfile.write "\t0"
-      # finish row EOL
+    var fileLen = 0
+    for line in lines(memfiles.open(bimfile)): inc fileLen
+
+    var
+      allbps = newSeqOfCap[int](fileLen)
+      allrsids = newSeqOfCap[int](fileLen)
+      allcms = newSeqOfCap[string](fileLen)
+      allchr:int
+      columnsWithoutAnnots = initOrderedTable[string,seq[char]](nextPowerOfTwo allsnpfiles.len)
+      columnsWithAnnots = initOrderedTable[string,seq[string]](nextPowerOfTwo allsnpfiles.len)
+      columnsAnnotStatus = newSeqOfCap[bool](nextPowerOfTwo allsnpfiles.len)
+
+    # load bim data
+    for line in lines(memfiles.open(bimfile)):
+      if line.scanf("$i\trs$i\t$*\t$i",chr,rsid,cm,bp):
+        allrsids.add rsid
+        allcms.add cm
+        allbps.add bp
+    allchr = chr
+    # load each snp category data
+    for snpfile in allsnpfiles:
+      let (rsids,annotsByRsid) = snpfile.to_category
+      let columnName = snpfile.splitPath.tail
+      let has_no_annotations = annotsByRsid.len == 0
+      columnsAnnotStatus.add not has_no_annotations
+      var column:ptr seq[char]
+      var columnWithAnnots:ptr seq[string]
+      if has_no_annotations:
+        columnsWithoutAnnots[columnName] = newSeqOfCap[char](fileLen)
+        column = cast[ptr seq[char]](unsafeAddr columnsWithoutAnnots[columnName])
+      else:
+        columnsWithAnnots[columnName] = newSeqOfCap[string](fileLen)
+        columnWithAnnots = cast[ptr seq[string]](unsafeAddr columnsWithAnnots[columnName])
+      if has_no_annotations: # if rsids only
+        for rsid in allrsids:
+          if rsids.contains rsid: column[].add '1'
+          else:                   column[].add '0'
+      else:
+        for rsid in allrsids:
+          if rsids.contains rsid: columnWithAnnots[].add annotsByRsid[rsid]
+          else:                   columnWithAnnots[].add "0"
+
+    # write initial content to annot
+    if verbosity >= 1:
+      echo &"saving to {destinationPath}"
+    var outfile = newFileStream(destinationPath, fmWrite)
+    var outstring:string
+    # write column headers
+    outstring = "CHR\tBP\tSNP\tCM\tbase"
+    for name in allsnpfiles.mapIt(it.splitPath.tail):
+      outstring.add "\t" & name
+    outstring.add "\n"
+    # write column contents for each row
+    for i in 0 ..< allrsids.len:
+      outstring.add &"{allchr}\t{allbps[i]}\trs{allrsids[i]}\t{allcms[i]}\t1"
+      for coln,name in allsnpfiles.mapIt(it.splitPath.tail):
+        if columnsAnnotStatus[coln]: outstring.add &"\t{columnsWithAnnots[name][i]}"
+        else:                        outstring.add &"\t{columnsWithoutAnnots[name][i]}"
       outstring.add "\n"
-      outfile.write outstring
+    writeFile(destinationPath, outstring)
 
 const
   baseline_filename = "example.22.bim"
@@ -188,9 +210,9 @@ proc contains[T](a:openArray[T], b:openArray[T]):bool =
     if each_item in b: return true
   return false
 
-proc has_continuous_values(col:var seq[float]):bool =
+proc has_continuous_values(col:var seq[string]):bool =
   for value in col:
-    if value != 0 and value != 1:
+    if value != "0" and value != "1":
       return true
   return false
 
@@ -198,7 +220,7 @@ proc unmake(files:seq[string],outdir:string) =
   # indexed [5+colid,[rsid,annot]]
   # 5+ so it's same as original annot file column index
   var colsrsids = initTable[int,seq[int]]()
-  var colsvals = initTable[int,seq[float]]()
+  var colsvals = initTable[int,seq[string]]()
   var colnames:seq[string]
   var file: CsvParser
   let SNPCOL = 2
@@ -219,13 +241,13 @@ proc unmake(files:seq[string],outdir:string) =
       if column notin colnames:
         colnames.add column
         colsrsids[adjustedColId] = newSeqOfCap[int](totalFileLens)
-        colsvals[adjustedColId] = newSeqOfCap[float](totalFileLens)
+        colsvals[adjustedColId] = newSeqOfCap[string](totalFileLens)
     while file.readRow():
       for coln in FIRSTUSERCOL ..< file.headers.len:
         # [2..^1] gets int part of of "rs1234567"
         if file.row[coln] != "0" and file.row[coln] != "0.0":
           colsrsids[coln].add file.row[SNPCOL][2..^1].parseInt
-          colsvals[coln].add file.row[coln].parseFloat
+          colsvals[coln].add file.row[coln]
   # prepare output file
   create_dir outdir
   for coln,column in colnames:
@@ -235,7 +257,7 @@ proc unmake(files:seq[string],outdir:string) =
       echo &"creating " & outdir / outfilename
     if colsvals[coln+FIRSTUSERCOL].has_continuous_values:
       for i in 0 ..< colsrsids[coln+FIRSTUSERCOL].len:
-        outfile.write "rs" & $colsrsids[coln+FIRSTUSERCOL][i] & "\t" & $colsvals[coln+FIRSTUSERCOL][i] & "\n"
+        outfile.write "rs" & $colsrsids[coln+FIRSTUSERCOL][i] & "\t" & colsvals[coln+FIRSTUSERCOL][i] & "\n"
     else:
       for rsid in colsrsids[coln+FIRSTUSERCOL]:
         outfile.write "rs" & $rsid & "\n"
@@ -318,19 +340,20 @@ proc main() =
       echo "       and snp category files with with -s or --snpfiles"
       quit(1)
     # run normal program flow
+    let prefix = if options.bimprefix.endswith ".bim": options.bimprefix[0..^5] else: options.bimprefix
     let
       allsnpfiles = options.snpfiles.all_wildcards_expanded.sorted
-      allbimfiles   = (options.bimprefix & "*.bim").all_wildcards_expanded.sorted
-      (categories,categoriesWithAnnots) = allsnpfiles.to_categories
+      allbimfiles   = (prefix & "*.bim").all_wildcards_expanded.sorted
     for bimfile in allbimfiles:
-      write_annot(bimfile, categories, categoriesWithAnnots, options.outdir)
+      write_annot(allbimfiles, allsnpfiles, options.outdir)
     quit(0)
 
   if options.command == "unmake":
     if not got.annotprefix or got.bimprefix or got.snpfiles:
       echo "Error: please specify an annot prefix with -a or --annotprefix"
       quit(1)
-    let allannotfiles = (options.annotprefix & "*.annot").all_wildcards_expanded.sorted
+    let prefix = if options.annotprefix.endswith ".bim": options.annotprefix[0..^5] else: options.annotprefix
+    let allannotfiles = (prefix & "*.annot").all_wildcards_expanded.sorted
     allannotfiles.unmake(outdir=options.outdir)
     quit(0)
 

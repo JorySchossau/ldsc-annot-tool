@@ -19,8 +19,8 @@ Converts a collection of rsid categories into formatted .annot files for ldsc re
 
 Usage
   annot examples
-  annot make -b|--bimprefix PATH -s|--snpfiles FILES... [-o|--output OUTDIR]
-  annot unmake -b|--bimprefix PATH [-o|--output OUTDIR]
+  annot make -b|--bimprefix PATH -s|--snpfiles FILES... [-o|--outdir OUTDIR]
+  annot unmake -a|--annotprefix PATH [-o|--outdir OUTDIR]
 
 Example
   ./annot -b test_baseline/subset. -s test_annots/FetalDHS_Trynka test_annots/H3K27ac_PGC2
@@ -30,9 +30,20 @@ Commands
   make       construct annot files from category annotations
   unmake     deconstruct annot files and create category annotations
 
+  examples
+             create example input files
+  [no options]
+
+  make
+             construct annot files from category annotations
   -b --bimprefix PATH    nonunique prefix path to all bim files
   -s --snpfiles FILES... all snp category files
-  -o --output OUTDIR     output directory (default 'output')
+  -o --outdir OUTDIR     output directory, optional (default 'output')
+
+  unmake
+             deconstruct annot files and create category annotations
+  -a --annotprefix PATH    nonunique prefix path to all annot files
+  -o --outdir OUTDIR     output directory, optional (default 'output')
   -h --help              this help message
 
 Note that the snp file names will be used as category headers (names) in the resulting file. So if the files have an extension (.txt) then that will show up in the resulting file and analysis output. We recommend naming files to not have an extension so the output is easier to read.
@@ -89,10 +100,10 @@ or
 or with optional output destination
 
 ```sh
-./annot make --output myoutput --bimprefix baseline/1kg_eur. --snpfiles categories/*
+./annot make --outdir myoutput --bimprefix baseline/1kg_eur. --snpfiles categories/*
 ```
 
 resulting in the new annotation files created in a directory `newAnnots` ready for ldsc regression, with each position annotated with a `0` or `1` for each category given, if the RSID is present (in this case, the `Exons` and `Introns` categories).
 
-All command line options are repositionable (`--output myoutput` may be last, for example)
+All command line options are repositionable (`--outdir myoutput` may be last, for example)
 
