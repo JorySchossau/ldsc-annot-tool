@@ -114,85 +114,84 @@ proc to_category(file:string): (Category,CategoryWithAnnotations) =
 # builds off of data in bim file
 # adding extra columns, 1 for each category
 # putting a 1 or 0 if rsid is in category
-proc write_annot(allbimfiles:seq[string], allsnpfiles:seq[string], outdir:string) =
+proc write_annot(bimfile:string, allsnpfiles:seq[string], outdir:string) =
 
-  for bimfile in allbimfiles:
-    # prepare output file
-    create_dir outdir
-    let outfilename = bimfile.split_file.name & ".annot"
-    let destinationPath = outdir / outfilename
+  # prepare output file
+  create_dir outdir
+  let outfilename = bimfile.split_file.name & ".annot"
+  let destinationPath = outdir / outfilename
 
-    check_bim_format bimfile
-    var
-      chr:int
-      rsid:int
-      cm:string
-      bp:int
-      lineN:int
+  check_bim_format bimfile
+  var
+    chr:int
+    rsid:int
+    cm:string
+    bp:int
+    lineN:int
 
-    if verbosity >= 1:
-      echo &"reading {bimfile}"
+  if verbosity >= 1:
+    echo &"reading {bimfile}"
 
-    var fileLen = 0
-    for line in lines(memfiles.open(bimfile)): inc fileLen
+  var fileLen = 0
+  for line in lines(memfiles.open(bimfile)): inc fileLen
 
-    var
-      allbps = newSeqOfCap[int](fileLen)
-      allrsids = newSeqOfCap[int](fileLen)
-      allcms = newSeqOfCap[string](fileLen)
-      allchr:int
-      columnsWithoutAnnots = initOrderedTable[string,seq[char]](nextPowerOfTwo allsnpfiles.len)
-      columnsWithAnnots = initOrderedTable[string,seq[string]](nextPowerOfTwo allsnpfiles.len)
-      columnsAnnotStatus = newSeqOfCap[bool](nextPowerOfTwo allsnpfiles.len)
+  var
+    allbps = newSeqOfCap[int](fileLen)
+    allrsids = newSeqOfCap[int](fileLen)
+    allcms = newSeqOfCap[string](fileLen)
+    allchr:int
+    columnsWithoutAnnots = initOrderedTable[string,seq[char]](nextPowerOfTwo allsnpfiles.len)
+    columnsWithAnnots = initOrderedTable[string,seq[string]](nextPowerOfTwo allsnpfiles.len)
+    columnsAnnotStatus = newSeqOfCap[bool](nextPowerOfTwo allsnpfiles.len)
 
-    # load bim data
-    for line in lines(memfiles.open(bimfile)):
-      if line.scanf("$i\trs$i\t$*\t$i",chr,rsid,cm,bp):
-        allrsids.add rsid
-        allcms.add cm
-        allbps.add bp
-    allchr = chr
-    # load each snp category data
-    for snpfile in allsnpfiles:
-      let (rsids,annotsByRsid) = snpfile.to_category
-      let columnName = snpfile.splitPath.tail
-      let has_no_annotations = annotsByRsid.len == 0
-      columnsAnnotStatus.add not has_no_annotations
-      var column:ptr seq[char]
-      var columnWithAnnots:ptr seq[string]
-      if has_no_annotations:
-        columnsWithoutAnnots[columnName] = newSeqOfCap[char](fileLen)
-        column = cast[ptr seq[char]](unsafeAddr columnsWithoutAnnots[columnName])
-      else:
-        columnsWithAnnots[columnName] = newSeqOfCap[string](fileLen)
-        columnWithAnnots = cast[ptr seq[string]](unsafeAddr columnsWithAnnots[columnName])
-      if has_no_annotations: # if rsids only
-        for rsid in allrsids:
-          if rsids.contains rsid: column[].add '1'
-          else:                   column[].add '0'
-      else:
-        for rsid in allrsids:
-          if rsids.contains rsid: columnWithAnnots[].add annotsByRsid[rsid]
-          else:                   columnWithAnnots[].add "0"
+  # load bim data
+  for line in lines(memfiles.open(bimfile)):
+    if line.scanf("$i\trs$i\t$*\t$i",chr,rsid,cm,bp):
+      allrsids.add rsid
+      allcms.add cm
+      allbps.add bp
+  allchr = chr
+  # load each snp category data
+  for snpfile in allsnpfiles:
+    let (rsids,annotsByRsid) = snpfile.to_category
+    let columnName = snpfile.splitPath.tail
+    let has_no_annotations = annotsByRsid.len == 0
+    columnsAnnotStatus.add not has_no_annotations
+    var column:ptr seq[char]
+    var columnWithAnnots:ptr seq[string]
+    if has_no_annotations:
+      columnsWithoutAnnots[columnName] = newSeqOfCap[char](fileLen)
+      column = cast[ptr seq[char]](unsafeAddr columnsWithoutAnnots[columnName])
+    else:
+      columnsWithAnnots[columnName] = newSeqOfCap[string](fileLen)
+      columnWithAnnots = cast[ptr seq[string]](unsafeAddr columnsWithAnnots[columnName])
+    if has_no_annotations: # if rsids only
+      for rsid in allrsids:
+        if rsids.contains rsid: column[].add '1'
+        else:                   column[].add '0'
+    else:
+      for rsid in allrsids:
+        if rsids.contains rsid: columnWithAnnots[].add annotsByRsid[rsid]
+        else:                   columnWithAnnots[].add "0"
 
-    # write initial content to annot
-    if verbosity >= 1:
-      echo &"saving to {destinationPath}"
-    var outfile = newFileStream(destinationPath, fmWrite)
-    var outstring:string
-    # write column headers
-    outstring = "CHR\tBP\tSNP\tCM\tbase"
-    for name in allsnpfiles.mapIt(it.splitPath.tail):
-      outstring.add "\t" & name
+  # write initial content to annot
+  if verbosity >= 1:
+    echo &"saving to {destinationPath}"
+  var outfile = newFileStream(destinationPath, fmWrite)
+  var outstring:string
+  # write column headers
+  outstring = "CHR\tBP\tSNP\tCM\tbase"
+  for name in allsnpfiles.mapIt(it.splitPath.tail):
+    outstring.add "\t" & name
+  outstring.add "\n"
+  # write column contents for each row
+  for i in 0 ..< allrsids.len:
+    outstring.add &"{allchr}\t{allbps[i]}\trs{allrsids[i]}\t{allcms[i]}\t1"
+    for coln,name in allsnpfiles.mapIt(it.splitPath.tail):
+      if columnsAnnotStatus[coln]: outstring.add &"\t{columnsWithAnnots[name][i]}"
+      else:                        outstring.add &"\t{columnsWithoutAnnots[name][i]}"
     outstring.add "\n"
-    # write column contents for each row
-    for i in 0 ..< allrsids.len:
-      outstring.add &"{allchr}\t{allbps[i]}\trs{allrsids[i]}\t{allcms[i]}\t1"
-      for coln,name in allsnpfiles.mapIt(it.splitPath.tail):
-        if columnsAnnotStatus[coln]: outstring.add &"\t{columnsWithAnnots[name][i]}"
-        else:                        outstring.add &"\t{columnsWithoutAnnots[name][i]}"
-      outstring.add "\n"
-    writeFile(destinationPath, outstring)
+  writeFile(destinationPath, outstring)
 
 const
   baseline_filename = "example.22.bim"
@@ -345,7 +344,7 @@ proc main() =
       allsnpfiles = options.snpfiles.all_wildcards_expanded.sorted
       allbimfiles   = (prefix & "*.bim").all_wildcards_expanded.sorted
     for bimfile in allbimfiles:
-      write_annot(allbimfiles, allsnpfiles, options.outdir)
+      write_annot(bimfile, allsnpfiles, options.outdir)
     quit(0)
 
   if options.command == "unmake":
