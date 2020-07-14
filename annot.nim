@@ -138,6 +138,7 @@ proc write_annot(bimfile:string, allsnpfiles:seq[string], outdir:string) =
   var
     allbps = newSeqOfCap[int](fileLen)
     allrsids = newSeqOfCap[int](fileLen)
+    isSsid = newSeqOfCap[bool](fileLen) # 0 = rsid, 1 = ssid (rare! Alkes baseline has ssids only on chr 12)
     allcms = newSeqOfCap[string](fileLen)
     allchr:int
     columnsWithoutAnnots = initOrderedTable[string,seq[char]](nextPowerOfTwo allsnpfiles.len)
@@ -150,6 +151,12 @@ proc write_annot(bimfile:string, allsnpfiles:seq[string], outdir:string) =
       allrsids.add rsid
       allcms.add cm
       allbps.add bp
+      isSsid.add false
+    elif line.scanf("$i\tss$i\t$*\t$i",chr,rsid,cm,bp):
+      allrsids.add rsid
+      allcms.add cm
+      allbps.add bp
+      isSsid.add true
   allchr = chr
   # load each snp category data
   for snpfile in allsnpfiles:
@@ -186,7 +193,8 @@ proc write_annot(bimfile:string, allsnpfiles:seq[string], outdir:string) =
   outstring.add "\n"
   # write column contents for each row
   for i in 0 ..< allrsids.len:
-    outstring.add &"{allchr}\t{allbps[i]}\trs{allrsids[i]}\t{allcms[i]}\t1"
+    if unlikely(isSsid[i]): outstring.add &"{allchr}\t{allbps[i]}\tss{allrsids[i]}\t{allcms[i]}\t1"
+    else:                   outstring.add &"{allchr}\t{allbps[i]}\trs{allrsids[i]}\t{allcms[i]}\t1"
     for coln,name in allsnpfiles.mapIt(it.splitPath.tail):
       if columnsAnnotStatus[coln]: outstring.add &"\t{columnsWithAnnots[name][i]}"
       else:                        outstring.add &"\t{columnsWithoutAnnots[name][i]}"
