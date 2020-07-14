@@ -272,7 +272,7 @@ Usage
   {EXE} unmake -a|--annotprefix PATH [-o|--outdir OUTDIR]
 
 Example
-  ./{EXE} -b test_baseline/subset. -s test_annots/FetalDHS_Trynka test_annots/H3K27ac_PGC2
+  ./{EXE} make -b test_baseline/subset. -s test_annots/FetalDHS_Trynka test_annots/H3K27ac_PGC2
 
 Commands
   examples   create example input files
@@ -328,7 +328,7 @@ proc main() =
     echo &"created example files: {baseline_filename}, {category_filename}"
     echo ""
     echo "run using the example files:"
-    echo &"  annot -b example. {category_filename}"
+    echo &"  annot make -b example. -s {category_filename}"
     echo ""
     quit(0)
 
